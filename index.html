@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RecipeLang — a cooking DSL compiler</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── tokens ── */
+    :root {
+      --purple-50:  #faf7ff;
+      --purple-100: #f0e8ff;
+      --purple-200: #d8c8f8;
+      --purple-400: #a78bdd;
+      --purple-600: #6b46c1;
+      --purple-800: #3b1f6e;
+      --pink-100:   #fbeaf0;
+      --pink-400:   #d4537e;
+      --pink-600:   #993556;
+      --pink-200:   #f4c0d1;
+      --blue-100:   #e6f1fb;
+      --blue-400:   #378add;
+      --blue-600:   #185fa5;
+      --blue-200:   #b5d4f4;
+      --muted:      #8b6db0;
+      --border:     #ede5f9;
+      --text:       #3b1f6e;
+      --text-soft:  #6a4f8a;
+      --success:    #059669;
+      --warn-bg:    #fff7ed;
+      --warn-text:  #92400e;
+      --warn-border:#fcd9a0;
+      --err-bg:     #fff0f0;
+      --err-text:   #991b1b;
+      --err-border: #fca5a5;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--purple-50);
+      color: var(--text);
+      min-height: 100vh;
+      background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='20' cy='20' r='1.5' fill='%23c4b0f0' opacity='0.3'/%3E%3Ccircle cx='0' cy='0' r='1.5' fill='%23c4b0f0' opacity='0.3'/%3E%3Ccircle cx='40' cy='0' r='1.5' fill='%23c4b0f0' opacity='0.3'/%3E%3Ccircle cx='0' cy='40' r='1.5' fill='%23c4b0f0' opacity='0.3'/%3E%3Ccircle cx='40' cy='40' r='1.5' fill='%23c4b0f0' opacity='0.3'/%3E%3C/svg%3E");
+    }
+
+    /* ── nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 40px;
+      background: rgba(250,247,255,0.88);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      color: var(--purple-600);
+      letter-spacing: -0.3px;
+    }
+    .nav-logo span { color: var(--pink-400); font-style: italic; }
+    .nav-links { display: flex; gap: 28px; list-style: none; }
+    .nav-links a {
+      font-size: 13.5px;
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 400;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--purple-600); }
+
+    /* ── hero ── */
+    .hero {
+      text-align: center;
+      padding: 64px 24px 48px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: var(--purple-100);
+      color: var(--purple-600);
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--purple-200);
+      margin-bottom: 18px;
+      letter-spacing: 0.4px;
+    }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 42px;
+      line-height: 1.2;
+      color: var(--purple-800);
+      margin-bottom: 14px;
+    }
+    .hero h1 em { color: var(--pink-400); font-style: italic; }
+    .hero p {
+      font-size: 15.5px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-weight: 300;
+    }
+
+    /* ── decorative dots row ── */
+    .dots-row {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin: 0 0 48px;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+    .dot:nth-child(1) { background: var(--purple-400); }
+    .dot:nth-child(2) { background: var(--pink-400); }
+    .dot:nth-child(3) { background: var(--blue-400); }
+    .dot:nth-child(4) { background: var(--purple-200); }
+    .dot:nth-child(5) { background: var(--pink-200); }
+
+    /* ── compiler card ── */
+    .compiler-wrap {
+      max-width: 1100px;
+      margin: 0 auto 64px;
+      padding: 0 24px;
+    }
+    .compiler-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .compiler-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    @media (max-width: 720px) {
+      .compiler-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── editor ── */
+    .editor-panel {
+      padding: 28px;
+      border-right: 1px solid var(--border);
+    }
+    .panel-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .panel-label::before {
+      content: '';
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--purple-400);
+    }
+
+    .editor-toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .snippet-btn {
+      font-size: 11px;
+      font-family: 'DM Sans', sans-serif;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--purple-50);
+      color: var(--purple-600);
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .snippet-btn:hover {
+      background: var(--purple-100);
+      border-color: var(--purple-200);
+    }
+
+    #code-input {
+      width: 100%;
+      min-height: 320px;
+      padding: 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.75;
+      color: var(--text);
+      background: var(--purple-50);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      resize: vertical;
+      outline: none;
+      transition: border-color .2s;
+    }
+    #code-input:focus { border-color: var(--purple-400); }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+
+    .btn-compile {
+      flex: 1;
+      padding: 12px;
+      background: color-mix(in srgb, var(--purple-600) 50%, var(--pink-400) 50%);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      letter-spacing: 0.2px;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn-compile:hover { opacity: 0.92; }
+    .btn-compile:active { transform: scale(0.98); }
+
+    .btn-clear {
+      padding: 12px 18px;
+      background: white;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-clear:hover { background: var(--purple-50); }
+
+    /* ── output panel ── */
+    .output-panel {
+      padding: 28px;
+      background: #fdf9ff;
+    }
+    .output-panel .panel-label::before { background: var(--pink-400); }
+
+    #output-area { min-height: 320px; }
+
+    .output-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 260px;
+      gap: 10px;
+      color: var(--purple-200);
+    }
+    .placeholder-icon {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: var(--purple-100);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .placeholder-icon svg { width: 22px; height: 22px; stroke: var(--purple-400); }
+    .output-placeholder p { font-size: 13px; color: var(--muted); }
+
+    /* recipe output card */
+    .recipe-out {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .recipe-out-header {
+      background: linear-gradient(135deg, #f0e8ff44, #fbeaf044);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 18px;
+    }
+    .recipe-out-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      color: var(--purple-800);
+      margin-bottom: 8px;
+    }
+    .pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .pill {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .pill-purple { background: var(--purple-100); color: var(--purple-600); border: 1px solid var(--purple-200); }
+    .pill-pink   { background: var(--pink-100);   color: var(--pink-600);   border: 1px solid var(--pink-200); }
+    .pill-blue   { background: var(--blue-100);   color: var(--blue-600);   border: 1px solid var(--blue-200); }
+    .pill-warn   { background: var(--warn-bg);    color: var(--warn-text);  border: 1px solid var(--warn-border); }
+
+    .recipe-out-body { padding: 16px 18px; }
+
+    .out-section { margin-bottom: 16px; }
+    .out-section:last-child { margin-bottom: 0; }
+
+    .out-section-title {
+      font-size: 10.5px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--purple-400);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .out-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .ing-table { width: 100%; border-collapse: collapse; }
+    .ing-table td {
+      font-size: 13px;
+      padding: 4px 0;
+      border-bottom: 1px dashed var(--purple-100);
+      color: var(--text-soft);
+    }
+    .ing-table td:last-child { text-align: right; color: var(--muted); font-size: 12px; }
+    .ing-table tr:last-child td { border-bottom: none; }
+
+    .step-list { display: flex; flex-direction: column; gap: 6px; }
+    .step-item { display: flex; gap: 9px; align-items: flex-start; }
+    .step-num {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--purple-100);
+      color: var(--purple-600);
+      font-size: 10px;
+      font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-text { font-size: 13px; color: var(--text-soft); line-height: 1.5; }
+
+    .bake-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--warn-bg);
+      color: var(--warn-text);
+      border: 1px solid var(--warn-border);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* error / warn messages */
+    .msg-error, .msg-warn, .msg-ok {
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 8px;
+      line-height: 1.5;
+    }
+    .msg-error { background: var(--err-bg); color: var(--err-text); border: 1px solid var(--err-border); }
+    .msg-warn  { background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--warn-border); }
+    .msg-ok    { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+    /* ── pipeline bar ── */
+    .pipeline-bar {
+      border-top: 1px solid var(--border);
+      background: white;
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .pipe-box {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 20px;
+      transition: transform .15s;
+    }
+    .pipe-box.active { transform: scale(1.07); }
+    .pipe-arrow { color: var(--purple-200); font-size: 16px; padding: 0 2px; }
+    .pb1 { background: var(--purple-100); color: var(--purple-600); border: 1px solid var(--purple-200); }
+    .pb2 { background: var(--pink-100);   color: var(--pink-600);   border: 1px solid var(--pink-200); }
+    .pb3 { background: var(--blue-100);   color: var(--blue-600);   border: 1px solid var(--blue-200); }
+    .pb4 { background: #f0fdf4;           color: #166534;           border: 1px solid #bbf7d0; }
+
+    /* ── features row ── */
+    .features {
+      max-width: 1100px;
+      margin: 0 auto 80px;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .feature-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      transition: border-color .2s;
+    }
+    .feature-card:hover { border-color: var(--purple-400); }
+    .feature-icon {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+    .fi-purple { background: var(--purple-100); }
+    .fi-pink   { background: var(--pink-100); }
+    .fi-blue   { background: var(--blue-100); }
+    .fi-green  { background: #f0fdf4; }
+    .feature-card h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 15px;
+      color: var(--purple-800);
+      margin-bottom: 5px;
+    }
+    .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+    /* ── footer ── */
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
+    }
+    footer span { color: var(--pink-400); }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">Recipe<span>Lang</span></div>
+    <ul class="nav-links">
+      <li><a href="#compiler">compiler</a></li>
+      <li><a href="#features">features</a></li>
+      <li><a href="#about">about</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">a cooking dsl compiler</div>
+    <h1>turn recipes into <em>code</em></h1>
+    <p>Write recipes in plain, readable language. RecipeLang compiles them through a full four-stage pipeline — lexing, parsing, semantic analysis, and code generation.</p>
+  </section>
+  <div class="dots-row">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    <div class="dot"></div><div class="dot"></div>
+  </div>
+
+  <!-- COMPILER -->
+  <section class="compiler-wrap" id="compiler">
+    <div class="compiler-card">
+      <div class="compiler-grid">
+
+        <!-- LEFT: editor -->
+        <div class="editor-panel">
+          <div class="panel-label">recipe editor</div>
+          <div class="editor-toolbar">
+            <button class="snippet-btn" onclick="insertSnippet('allergen')">+ allergen</button>
+            <button class="snippet-btn" onclick="insertSnippet('diet')">+ diet</button>
+            <button class="snippet-btn" onclick="insertSnippet('bake')">+ bake</button>
+            <button class="snippet-btn" onclick="insertSnippet('convert')">+ convert</button>
+            <button class="snippet-btn" onclick="insertSnippet('scale')">+ scale</button>
+          </div>
+          <textarea id="code-input" spellcheck="false" placeholder="Write your recipe here...">RECIPE "Chocolate Cake"
+SERVES 8
+
+INGREDIENT flour  200g
+INGREDIENT sugar  150g
+INGREDIENT eggs   3
+INGREDIENT butter 100g
+INGREDIENT milk   250ml
+INGREDIENT cocoa  50g
+
+ALLERGEN CONTAINS milk eggs gluten
+DIET CLASSIFY vegetarian
+
+PREP
+  STEP "Measure and sift all dry ingredients"
+  MIX flour sugar cocoa
+  CONVERT milk TO l
+
+COOK
+  STEP "Melt butter in a saucepan"
+  MIX butter eggs milk
+  BAKE 180C FOR 35min
+
+ASSEMBLE
+  STEP "Remove cake from oven and let cool"
+  STEP "Layer cake and apply frosting"
+
+SERVE
+  STEP "Slice and plate the cake"
+  STEP "Dust with powdered sugar"
+
+SCALE TO 16</textarea>
+          <div class="btn-row">
+            <button class="btn-compile" onclick="compileRecipe()">compile recipe</button>
+            <button class="btn-clear" onclick="clearAll()">clear</button>
+          </div>
+        </div>
+
+        <!-- RIGHT: output -->
+        <div class="output-panel">
+          <div class="panel-label">compiled output</div>
+          <div id="output-area">
+            <div class="output-placeholder">
+              <div class="placeholder-icon">
+                <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                </svg>
+              </div>
+              <p>your compiled recipe will appear here</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PIPELINE BAR -->
+      <div class="pipeline-bar" id="pipeline">
+        <div class="pipe-box pb1" id="pipe1">lexer</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-box pb2" id="pipe2">parser</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-box pb3" id="pipe3">semantic analyser</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-box pb4" id="pipe4">code generator</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="feature-card">
+      <div class="feature-icon fi-purple">🧁</div>
+      <h3>Sections</h3>
+      <p>Organise steps into PREP, COOK, ASSEMBLE, and SERVE blocks for clear structure.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-pink">🌸</div>
+      <h3>Allergen tagging</h3>
+      <p>Declare allergens explicitly. The analyser also auto-infers them from ingredient names.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-blue">🫐</div>
+      <h3>Dietary classification</h3>
+      <p>Tag recipes as vegan, vegetarian, gluten-free and more. Conflicts are caught automatically.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon fi-green">🌿</div>
+      <h3>Unit conversion</h3>
+      <p>Convert between g/kg and ml/l. Amounts auto-upgrade after SCALE for clean output.</p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer id="about">
+    made with <span>♥</span> for a compiler design assignment &nbsp;·&nbsp; RecipeLang DSL
+  </footer>
+
+  <script>
+    // ── LEXER ──────────────────────────────────────────────────
+    const KEYWORDS = new Set([
+      'RECIPE','SERVES','INGREDIENT','STEP','BAKE','FOR','MIX',
+      'SCALE','TO','SERVE','PREP','COOK','ASSEMBLE','CONVERT',
+      'ALLERGEN','DIET','CONTAINS','CLASSIFY'
+    ]);
+    const UNITS      = new Set(['g','kg','ml','l','tsp','tbsp']);
+    const TEMP_UNITS = new Set(['C','F']);
+    const TIME_UNITS = new Set(['min','hr']);
+    const ALL_UNITS  = new Set([...UNITS, ...TEMP_UNITS, ...TIME_UNITS]);
+
+    const KNOWN_ALLERGENS = new Set(['milk','nuts','gluten','eggs','soy','wheat','fish','shellfish','peanuts','sesame']);
+    const KNOWN_DIETS     = new Set(['vegan','vegetarian','gluten-free','dairy-free','nut-free','halal','kosher']);
+
+    const DIET_CONFLICTS = {
+      'vegan':       new Set(['milk','eggs','fish','shellfish']),
+      'vegetarian':  new Set(['fish','shellfish']),
+      'gluten-free': new Set(['gluten','wheat']),
+      'dairy-free':  new Set(['milk']),
+      'nut-free':    new Set(['nuts','peanuts']),
+    };
+
+    const INGREDIENT_ALLERGEN_MAP = {
+      flour:'gluten', milk:'milk', butter:'milk', cream:'milk',
+      cheese:'milk', eggs:'eggs', egg:'eggs', soy:'soy', tofu:'soy',
+      peanuts:'peanuts', nuts:'nuts', almond:'nuts', walnut:'nuts',
+      wheat:'wheat', fish:'fish', shrimp:'shellfish', sesame:'sesame',
+    };
+
+    const UNIT_CONVERSIONS = { g:1, kg:1000, ml:1, l:1000, tsp:1, tbsp:3 };
+    const UNIT_UPGRADE     = { g:[1000,'kg',0.001], ml:[1000,'l',0.001], tsp:[3,'tbsp',1/3] };
+
+    const COMPAT = [new Set(['g','kg']), new Set(['ml','l']), new Set(['tsp','tbsp'])];
+
+    function unitsCompatible(u1, u2) {
+      if (u1 === u2) return true;
+      return COMPAT.some(g => g.has(u1) && g.has(u2));
+    }
+
+    function tokenize(source) {
+      const tokens = [];
+      const re = /(\d+(?:\.\d+)?)|("(?:[^"]*)")|([A-Za-z][A-Za-z0-9_-]*)|([^\s\w"]+)/g;
+      let line = 1;
+      let pos  = 0;
+      while (pos < source.length) {
+        // skip whitespace (track newlines)
+        while (pos < source.length && /[ \t\r\n]/.test(source[pos])) {
+          if (source[pos] === '\n') line++;
+          pos++;
+        }
+        if (pos >= source.length) break;
+        // comment
+        if (source[pos] === '#') {
+          while (pos < source.length && source[pos] !== '\n') pos++;
+          continue;
+        }
+        // number
+        let m = source.slice(pos).match(/^\d+(?:\.\d+)?/);
+        if (m) { tokens.push({type:'NUMBER', val:m[0], line}); pos += m[0].length; continue; }
+        // string
+        m = source.slice(pos).match(/^"([^"]*)"/);
+        if (m) { tokens.push({type:'STRING', val:m[1], line}); pos += m[0].length; continue; }
+        // word
+        m = source.slice(pos).match(/^[A-Za-z][A-Za-z0-9_-]*/);
+        if (m) {
+          const w = m[0];
+          if      (KEYWORDS.has(w))  tokens.push({type:'KEYWORD', val:w, line});
+          else if (ALL_UNITS.has(w)) tokens.push({type:'UNIT',    val:w, line});
+          else                        tokens.push({type:'NAME',    val:w, line});
+          pos += w.length;
+          continue;
+        }
+        pos++; // skip unknown char
+      }
+      tokens.push({type:'EOF', val:'', line});
+      return tokens;
+    }
+
+    // ── PARSER ─────────────────────────────────────────────────
+    const SECTION_KW = new Set(['PREP','COOK','ASSEMBLE','SERVE']);
+
+    class Parser {
+      constructor(tokens) { this.tokens = tokens; this.pos = 0; }
+      peek()  { return this.tokens[this.pos]; }
+      consume(type, val) {
+        const t = this.tokens[this.pos];
+        if (type && t.type !== type) throw new Error(`Line ${t.line}: expected ${type}, got ${t.type} (${JSON.stringify(t.val)})`);
+        if (val  && t.val  !== val)  throw new Error(`Line ${t.line}: expected '${val}', got '${t.val}'`);
+        this.pos++;
+        return t;
+      }
+      parse() {
+        const node = {};
+        this.consume('KEYWORD','RECIPE');
+        node.name   = this.consume('STRING').val;
+        this.consume('KEYWORD','SERVES');
+        node.serves = parseFloat(this.consume('NUMBER').val);
+
+        node.ingredients = [];
+        while (this.peek().val === 'INGREDIENT') node.ingredients.push(this.parseIngredient());
+
+        node.allergens = [];
+        if (this.peek().val === 'ALLERGEN') {
+          this.consume('KEYWORD','ALLERGEN');
+          this.consume('KEYWORD','CONTAINS');
+          while (this.peek().type === 'NAME') node.allergens.push(this.consume('NAME').val);
+        }
+
+        node.diets = [];
+        if (this.peek().val === 'DIET') {
+          this.consume('KEYWORD','DIET');
+          this.consume('KEYWORD','CLASSIFY');
+          while (this.peek().type === 'NAME') node.diets.push(this.consume('NAME').val);
+        }
+
+        node.sections = [];
+        while (this.peek().type !== 'EOF' && this.peek().val !== 'SCALE') {
+          if (SECTION_KW.has(this.peek().val)) node.sections.push(this.parseSection());
+          else throw new Error(`Line ${this.peek().line}: expected section (PREP/COOK/ASSEMBLE/SERVE), got '${this.peek().val}'`);
+        }
+
+        node.scaleTo = null;
+        if (this.peek().val === 'SCALE') {
+          this.consume('KEYWORD','SCALE');
+          this.consume('KEYWORD','TO');
+          node.scaleTo = parseFloat(this.consume('NUMBER').val);
+        }
+        return node;
+      }
+      parseIngredient() {
+        this.consume('KEYWORD','INGREDIENT');
+        const name   = this.consume('NAME').val;
+        const amount = parseFloat(this.consume('NUMBER').val);
+        const unit   = this.peek().type === 'UNIT' ? this.consume('UNIT').val : '';
+        return {name, amount, unit};
+      }
+      parseSection() {
+        const name = this.consume('KEYWORD').val;
+        const stmts = [];
+        while (this.peek().type !== 'EOF' && !SECTION_KW.has(this.peek().val) && this.peek().val !== 'SCALE') {
+          stmts.push(this.parseStatement());
+        }
+        return {name, statements: stmts};
+      }
+      parseStatement() {
+        const t = this.peek();
+        if (t.val === 'STEP') {
+          this.consume('KEYWORD','STEP');
+          return {type:'STEP', text: this.consume('STRING').val};
+        }
+        if (t.val === 'BAKE') {
+          this.consume('KEYWORD','BAKE');
+          const temp     = parseFloat(this.consume('NUMBER').val);
+          const tempUnit = this.consume('UNIT').val;
+          this.consume('KEYWORD','FOR');
+          const dur      = parseFloat(this.consume('NUMBER').val);
+          const timeUnit = this.consume('UNIT').val;
+          return {type:'BAKE', temp, tempUnit, dur, timeUnit};
+        }
+        if (t.val === 'MIX') {
+          this.consume('KEYWORD','MIX');
+          const names = [];
+          while (this.peek().type === 'NAME') names.push(this.consume('NAME').val);
+          return {type:'MIX', ingredients: names};
+        }
+        if (t.val === 'CONVERT') {
+          this.consume('KEYWORD','CONVERT');
+          const name = this.consume('NAME').val;
+          this.consume('KEYWORD','TO');
+          const toUnit = this.consume('UNIT').val;
+          return {type:'CONVERT', ingredient: name, toUnit};
+        }
+        throw new Error(`Line ${t.line}: unexpected token '${t.val}'`);
+      }
+    }
+
+    // ── SEMANTIC ANALYSER ──────────────────────────────────────
+    function inferAllergens(ingredients) {
+      const inf = new Set();
+      ingredients.forEach(i => {
+        const a = INGREDIENT_ALLERGEN_MAP[i.name.toLowerCase()];
+        if (a) inf.add(a);
+      });
+      return inf;
+    }
+
+    function analyse(ast) {
+      const errors = [], warnings = [];
+      const declared = {};
+      ast.ingredients.forEach(i => declared[i.name] = i);
+
+      if (ast.serves <= 0) errors.push("SERVES must be a positive number");
+      if (!ast.sections.length) errors.push("Recipe must have at least one section");
+
+      const declaredAllergens = new Set(ast.allergens);
+      const inferred          = inferAllergens(ast.ingredients);
+      const allAllergens      = new Set([...declaredAllergens, ...inferred]);
+
+      ast.allergens.forEach(a => {
+        if (!KNOWN_ALLERGENS.has(a)) errors.push(`Unknown allergen '${a}'`);
+      });
+
+      inferred.forEach(a => {
+        if (!declaredAllergens.has(a))
+          warnings.push(`Ingredient implies allergen '${a}' — consider adding it to ALLERGEN CONTAINS`);
+      });
+
+      ast.diets.forEach(d => {
+        if (!KNOWN_DIETS.has(d)) {
+          errors.push(`Unknown diet '${d}'`);
+        } else if (DIET_CONFLICTS[d]) {
+          const conflicts = [...DIET_CONFLICTS[d]].filter(c => allAllergens.has(c));
+          if (conflicts.length) errors.push(`DIET '${d}' conflicts with: ${conflicts.join(', ')}`);
+        }
+      });
+
+      ast.sections.forEach(sec => {
+        sec.statements.forEach(s => {
+          if (s.type === 'BAKE') {
+            if (s.temp <= 0) errors.push("BAKE temperature must be > 0");
+            if (s.dur  <= 0) errors.push("BAKE duration must be > 0");
+          } else if (s.type === 'MIX') {
+            s.ingredients.forEach(n => {
+              if (!declared[n]) errors.push(`MIX uses undeclared ingredient '${n}'`);
+            });
+          } else if (s.type === 'CONVERT') {
+            if (!declared[s.ingredient]) {
+              errors.push(`CONVERT references undeclared ingredient '${s.ingredient}'`);
+            } else if (!unitsCompatible(declared[s.ingredient].unit, s.toUnit)) {
+              errors.push(`CONVERT: '${s.ingredient}' cannot convert from '${declared[s.ingredient].unit}' to '${s.toUnit}'`);
+            }
+          }
+        });
+      });
+
+      if (ast.scaleTo !== null && ast.scaleTo <= 0) errors.push("SCALE TO must be positive");
+
+      return { errors, warnings, allAllergens };
+    }
+
+    // ── CODE GENERATOR ─────────────────────────────────────────
+    function generateRecipe(ast) {
+      // deep-copy ingredients
+      const ings = ast.ingredients.map(i => ({...i}));
+      const ingMap = {};
+      ings.forEach(i => ingMap[i.name] = i);
+
+      // scale
+      if (ast.scaleTo) {
+        const factor = ast.scaleTo / ast.serves;
+        ings.forEach(i => i.amount = Math.round(i.amount * factor * 10000) / 10000);
+      }
+
+      // auto unit upgrade
+      ings.forEach(i => {
+        if (UNIT_UPGRADE[i.unit]) {
+          const [thresh, bigger, factor] = UNIT_UPGRADE[i.unit];
+          if (i.amount >= thresh) {
+            i.amount = Math.round(i.amount * factor * 10000) / 10000;
+            i.unit   = bigger;
+          }
+        }
+      });
+
+      // apply explicit CONVERT statements
+      ast.sections.forEach(sec => {
+        sec.statements.forEach(s => {
+          if (s.type === 'CONVERT' && ingMap[s.ingredient]) {
+            const ing  = ingMap[s.ingredient];
+            const base = ing.amount * UNIT_CONVERSIONS[ing.unit];
+            ing.amount = Math.round(base / UNIT_CONVERSIONS[s.toUnit] * 10000) / 10000;
+            ing.unit   = s.toUnit;
+          }
+        });
+      });
+
+      return { ings, serves: ast.scaleTo || ast.serves, ingMap };
+    }
+
+    // ── RENDER OUTPUT ──────────────────────────────────────────
+    function renderOutput(ast, analysisResult, genResult) {
+      const { errors, warnings, allAllergens } = analysisResult;
+      const area = document.getElementById('output-area');
+
+      let html = '';
+
+      warnings.forEach(w => { html += `<div class="msg-warn">⚠ ${w}</div>`; });
+
+      if (errors.length) {
+        errors.forEach(e => { html += `<div class="msg-error">✕ ${e}</div>`; });
+        area.innerHTML = html;
+        return;
+      }
+
+      const { ings, serves } = genResult;
+
+      // pills
+      const allergenPills = [...allAllergens].sort()
+        .map(a => `<span class="pill pill-pink">${a}</span>`).join('');
+      const dietPills = ast.diets
+        .map(d => `<span class="pill pill-blue">${d}</span>`).join('');
+
+      // ingredients rows
+      const ingRows = ings.map(i => {
+        const amt = i.amount === Math.floor(i.amount) ? Math.floor(i.amount) : i.amount;
+        return `<tr><td>${i.name}</td><td>${amt}${i.unit}</td></tr>`;
+      }).join('');
+
+      // sections
+      let sectionsHtml = '';
+      ast.sections.forEach(sec => {
+        let stepsHtml = '';
+        let n = 1;
+        sec.statements.forEach(s => {
+          if (s.type === 'STEP') {
+            stepsHtml += `<div class="step-item"><div class="step-num">${n++}</div><div class="step-text">${s.text}</div></div>`;
+          } else if (s.type === 'BAKE') {
+            stepsHtml += `<div class="step-item"><div class="bake-pill">🔥 Bake at ${s.temp}${s.tempUnit} for ${s.dur}${s.timeUnit}</div></div>`;
+          } else if (s.type === 'MIX') {
+            stepsHtml += `<div class="step-item"><div class="step-num">${n++}</div><div class="step-text">Mix: ${s.ingredients.join(', ')}</div></div>`;
+          }
+        });
+        sectionsHtml += `
+          <div class="out-section">
+            <div class="out-section-title">${sec.name.toLowerCase()}</div>
+            <div class="step-list">${stepsHtml}</div>
+          </div>`;
+      });
+
+      html += `
+        <div class="recipe-out">
+          <div class="recipe-out-header">
+            <div class="recipe-out-title">${ast.name}</div>
+            <div class="pills">
+              <span class="pill pill-purple">serves ${serves}</span>
+              ${allergenPills}
+              ${dietPills}
+            </div>
+          </div>
+          <div class="recipe-out-body">
+            <div class="out-section">
+              <div class="out-section-title">ingredients</div>
+              <table class="ing-table">${ingRows}</table>
+            </div>
+            ${sectionsHtml}
+          </div>
+        </div>
+        <div class="msg-ok" style="margin-top:10px">
+          ✓ Compiled successfully — ${ings.length} ingredients, ${ast.sections.length} sections
+        </div>`;
+
+      area.innerHTML = html;
+    }
+
+    // ── ANIMATE PIPELINE ───────────────────────────────────────
+    function animatePipeline(hasError, errorStage) {
+      const pipes = ['pipe1','pipe2','pipe3','pipe4'];
+      pipes.forEach(id => document.getElementById(id).classList.remove('active'));
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i > 0) document.getElementById(pipes[i-1]).classList.remove('active');
+        if (i >= pipes.length || (hasError && i === errorStage)) { clearInterval(interval); return; }
+        document.getElementById(pipes[i]).classList.add('active');
+        i++;
+      }, 300);
+    }
+
+    // ── MAIN COMPILE ───────────────────────────────────────────
+    function compileRecipe() {
+      const source = document.getElementById('code-input').value.trim();
+      const area   = document.getElementById('output-area');
+
+      if (!source) {
+        area.innerHTML = '<div class="msg-warn">⚠ Please write a recipe first.</div>';
+        return;
+      }
+
+      try {
+        // Stage 1: Lex
+        animatePipeline(false, -1);
+        const tokens = tokenize(source);
+
+        // Stage 2: Parse
+        const ast = new Parser(tokens).parse();
+
+        // Stage 3: Semantic analysis
+        const analysis = analyse(ast);
+
+        // Stage 4: Code gen
+        const genResult = generateRecipe(ast);
+
+        animatePipeline(false, -1);
+        renderOutput(ast, analysis, genResult);
+
+      } catch (e) {
+        const area = document.getElementById('output-area');
+        area.innerHTML = `<div class="msg-error">✕ ${e.message}</div>`;
+      }
+    }
+
+    function clearAll() {
+      document.getElementById('code-input').value = '';
+      document.getElementById('output-area').innerHTML = `
+        <div class="output-placeholder">
+          <div class="placeholder-icon">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+            </svg>
+          </div>
+          <p>your compiled recipe will appear here</p>
+        </div>`;
+    }
+
+    // ── SNIPPET INSERTER ───────────────────────────────────────
+    const SNIPPETS = {
+      allergen: '\nALLERGEN CONTAINS milk eggs gluten',
+      diet:     '\nDIET CLASSIFY vegetarian',
+      bake:     '\n  BAKE 180C FOR 30min',
+      convert:  '\n  CONVERT milk TO l',
+      scale:    '\nSCALE TO 16',
+    };
+
+    function insertSnippet(key) {
+      const ta  = document.getElementById('code-input');
+      const pos = ta.selectionStart;
+      const val = ta.value;
+      ta.value  = val.slice(0, pos) + SNIPPETS[key] + val.slice(pos);
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = pos + SNIPPETS[key].length;
+    }
+  </script>
+</body>
+</html>
