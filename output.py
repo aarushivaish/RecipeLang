@@ -14,7 +14,6 @@ serves      = 8.0
 allergens   = ['eggs', 'gluten', 'milk']
 diets       = ['vegetarian']
 
-# Scale from 8 to 16 servings (factor 2.0000)
 scale_factor = 2.0000
 serves = 16.0
 for ing in ingredients.values():
@@ -33,21 +32,12 @@ for ing in ingredients.values():
             ing["amount"] = round(ing["amount"] * factor, 4)
             ing["unit"]   = bigger
 
-# CONVERT milk TO l
-CONV = {"g":1,"kg":1000,"ml":1,"l":1000,"tsp":1,"tbsp":3}
-_ing = ingredients["milk"]
-_base = _ing["amount"] * CONV[_ing["unit"]]
-_ing["amount"] = round(_base / CONV["l"], 4)
-_ing["unit"]   = "l"
-
 print(f"\n╔══ {recipe_name} ══")
 print(f"║   Serves  : {int(serves)}")
-
 if allergens:
     print(f"║   Contains : {", ".join(allergens)}")
 else:
     print("║   Allergens: none detected")
-
 DIET_BADGE = {
     "vegan":       "[VEGAN]",
     "vegetarian":  "[VEGETARIAN]",
@@ -71,6 +61,12 @@ for name, ing in ingredients.items():
 print("\n── PREP ──")
 print("  1. Measure and sift all dry ingredients")
 print("  Mix: flour, sugar, cocoa")
+CONV = {"g":1,"kg":1000,"ml":1,"l":1000,"tsp":1,"tbsp":3}
+_ing = ingredients["milk"]
+_base = _ing["amount"] * CONV[_ing["unit"]]
+_ing["amount"] = round(_base / CONV["l"], 4)
+_ing["unit"]   = "l"
+
 print("\n── COOK ──")
 print("  1. Melt butter in a saucepan")
 print("  Mix: butter, eggs, milk")
@@ -81,4 +77,3 @@ print("  2. Layer cake and apply frosting")
 print("\n── SERVE ──")
 print("  1. Slice and plate the cake")
 print("  2. Dust with powdered sugar")
-print("")
